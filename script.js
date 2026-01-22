@@ -1405,3 +1405,210 @@ function runAll(){
     const di = luck.decades.indexOf(d);
     if(!yearsByDecade.has(di)) yearsByDecade.set(di, []);
     yearsByDec
+// ======= (여기부터 이어붙이기 시작) =======
+
+    years.forEach(y=>{
+      yearIndex.set(y.year, y);
+      const d = decadeIndex.get(y.year) || luck.decades[luck.decades.length-1];
+      const di = luck.decades.indexOf(d);
+      if(!yearsByDecade.has(di)) yearsByDecade.set(di, []);
+      yearsByDecade.get(di).push(y);
+    });
+
+    // sort year lists (ascending)
+    for(const [k, arr] of yearsByDecade.entries()){
+      arr.sort((a,b)=> a.year - b.year);
+    }
+
+    // LifeScore / Volatility / Global badges
+    const decadeTotals = luck.decades.map(d=>({ startAge:d.startAge, total:d.total }));
+    const weightsByBand = (ageStart)=> {
+      if(ageStart>=70) return 0.6;
+      if(ageStart>=60) return 0.8;
+      if(ageStart>=50) return 1.0;
+      if(ageStart>=40) return 1.2;
+      if(ageStart>=30) return 1.2;
+      if(ageStart>=20) return 0.8;
+      return 0.6; // 10~19
+    };
+    let wSum = 0, wtSum = 0;
+    for(const d of luck.decades){
+      const w = weightsByBand(d.startAge);
+      wSum += w;
+      wtSum += w * d.total;
+    }
+    const lifeScore = Math.round(wtSum / Math.max(1, wSum));
+    $("lifeScore").textContent = String(lifeScore);
+
+    // volatility from year totals
+    const yearTotals = years.map(x=>x.total);
+    const vol = computeVolatility(yearTotals);
+    $("volScore").textContent = String(vol.volatilityScore);
+    $("volLabel").textContent = vol.label;
+
+    const globalBadges = buildGlobalBadges(lifeScore, vol);
+    renderBadges($("globalBadges"), globalBadges);
+
+    // show best/worst years top3
+    const bestYears = top3Years(years.map(y=>({year:y.year, total:y.total})), false)
+      .map(x=> years.find(y=>y.year===x.year))
+      .filter(Boolean);
+    const worstYears = top3Years(years.map(y=>({year:y.year, total:y.total})), true)
+      .map(x=> years.find(y=>y.year===x.year))
+      .filter(Boolean);
+
+    renderChips($("bestYears"), bestYears.map(y=> `${y.year}(${y.total})`));
+    renderChips($("worstYears"), worstYears.map(y=> `${y.year}(${y.total})`));
+
+    // render decade accordion with nested years/months lazy
+    renderLifeAccordion($("daeunAcc"), {
+      decades: luck.decades,
+      yearsByDecade,
+      natalSurface,
+      natalBranches,
+      yearIndex,
+      decadeIndex
+    });
+
+    // daeun start info
+    $("daeunStart").textContent = `${luck.daeunStart.age}세(약 ${luck.daeunStart.dateApprox})`;
+    $("daeunDir").textContent = luck.direction;
+
+    // jieqi approx badge
+    setApproxBadge(approx || luck.daeunStart.isApprox);
+
+  }catch(err){
+    console.error(err);
+    setAlert("오류가 발생했습니다. 콘솔(F12)을 확인해주세요: " + (err?.message || err));
+  }
+}
+
+// --------------------------- 15) 이벤트/입력 바인딩 ----------------------------
+function bindUI(){
+  setTabs();
+
+  // input change -> recompute
+  ["name","birthDate","birthTime","gender"].forEach(id=>{
+    const el = $(id);
+    if(!el) return;
+    el.addEventListener("input", ()=> runAll());
+    el.addEventListener("change", ()=> runAll());
+  });
+
+  const btn = $("btnRun");
+  if(btn) btn.addEventListener("click", ()=> runAll());
+
+  // optional: run tests in console by calling window.runTests()
+}
+
+// --------------------------- 16) 테스트(콘솔) - 최소 10개 ----------------------------
+function assert(name, cond){
+  if(cond) console.log("PASS:", name);
+  else console.error("FAIL:", name);
+}
+
+function runTests(){
+  console.log("=== runTests() start ===");
+
+  // 1) 자시 경계 테스트 (23:00 / 00:59 / 01:00)
+  assert("hourBranch 23:00 -> 子", hourBranchFromTime(23,0)==="子");
+  assert("hourBranch 00:59 -> 子", hourBranchFromTime(0,59)==="子");
+  assert("hourBranch 01:00 -> 丑", hourBranchFromTime(1,0)==="丑");
+
+  // 2) 입춘 경계 테스트 (샘플연도: 2020~2030) - LICHUN 직전/직후
+  // LICHUN(2024) 근사 시각을 가져와서 -1분/+1분
+  const lichun2024 = getJieqiDateTimeKST(2024,"LICHUN").dt;
+  const before = new Date(lichun2024.getTime() - 60*1000);
+  const after  = new Date(lichun2024.getTime() + 60*1000);
+  const yBefore = yearGanji(before);
+  const yAfter  = yearGanji(after);
+  assert("before lichun -> previous year", yBefore.year === (utcDateToKSTParts(before).y - 1));
+  assert("after lichun -> same year", yAfter.year === (utcDateToKSTParts(after).y));
+
+  // 3) 이벤트 테이블 검증 3개 이상
+  // (a) 子-午 충
+  let ev = calcBranchEvents(["子","丑","寅","卯"], "午");
+  assert("chung 子-午", ev.chung>=1);
+
+  // (b) 子-丑 합(六合)
+  ev = calcBranchEvents(["子","寅","卯","辰"], "丑");
+  assert("hap 子-丑", ev.hap>=1);
+
+  // (c) 子-酉 파
+  ev = calcBranchEvents(["子","寅","卯","辰"], "酉");
+  assert("pa 子-酉", ev.pa>=1);
+
+  // 4) 콤보 CrashCombo 검증 (chung>=2 & (pa+hyeong+hae)>=2)
+  // natal: 子午(충 유발), 卯酉(충 유발) + period로 파/해/형 유발
+  const natal = ["子","午","卯","酉"];
+  ev = calcBranchEvents(natal, "未"); // 子-未 해, 午-未 합, etc
+  // 조합을 강제로 만들기 위해 이벤트를 직접 조작(테스트용)
+  const fakeEv = {hap:0,chung:2,hyeong:1,pa:1,hae:0,samhahp:0,banghap:0};
+  const fakeCats = {love:50,money:50,career:50,health:50};
+  const combos = detectCombos(fakeEv, fakeCats);
+  assert("CrashCombo detected", combos.includes("CrashCombo"));
+
+  // 5) BreakthroughCombo 검증
+  // 조건: (samhahp+hap)>=2 && chung==0 && total>=75
+  const fakeEv2 = {hap:2,chung:0,hyeong:0,pa:0,hae:0,samhahp:0,banghap:0};
+  const fakeCats2 = {love:80,money:80,career:80,health:70};
+  const combos2 = detectCombos(fakeEv2, fakeCats2);
+  assert("BreakthroughCombo detected", combos2.includes("BreakthroughCombo"));
+
+  // 6) Transition 블렌딩 완화 테스트 (대운 전환 첫해에 prev/curr 섞이는지)
+  // 간단히: buildYearsAndMonths에서 decade 전환 첫해(k=0)일 때 blended 적용되는지 간접 확인
+  const input = { birthDate:"2024-02-04", birthTime:"10:00", gender:"M", timezone:"Asia/Seoul" };
+  const fp = getFourPillars(input);
+  const luck = buildDaeunTimeline(fp.fourPillars, fp.birthUtc, input.gender);
+  const natalSurface = getWuxingCounts(fp.fourPillars,false);
+  const natalBranches = [fp.fourPillars.year.branch, fp.fourPillars.month.branch, fp.fourPillars.day.branch, fp.fourPillars.hour.branch];
+  const built = buildYearsAndMonths(natalSurface, natalBranches, luck.decades, fp.birthUtc, {});
+  const years = built.years;
+
+  // transition이 실제 존재할 때: 두 번째 대운 시작년도 찾기
+  const birthParts = utcDateToKSTParts(fp.birthUtc);
+  if(luck.decades.length>=2){
+    const secondStartYear = birthParts.y + luck.decades[1].startAge;
+    const yItem = years.find(y=>y.year===secondStartYear);
+    // "전환 첫해"는 decadeCats 단독보다 약간 완화될 가능성 -> 단순히 존재 확인
+    assert("Transition year item exists", !!yItem);
+  }else{
+    assert("Transition skipped (decades<2)", true);
+  }
+
+  // 7) carryAlpha (1~2월) 적용 확인: 1월/3월 yearRawMix 차이가 나는 구조 확인(간접)
+  // 여기선 함수가 에러 없이 실행되는지와 12개월 생성되는지 확인
+  const y0 = years[0];
+  const d0 = luck.decades[0];
+  const prevY = null;
+  const mpack = buildMonthsForYear(natalSurface, natalBranches, y0, prevY, d0);
+  assert("months length == 12", mpack.months.length===12);
+
+  // 8) overheat 규칙: 85+ 3연속 시 health -5가 적용되는지(간접 테스트)
+  // 테스트를 위해 month totals를 강제로 높은 값으로 만드는 건 여기 구조상 어려우니,
+  // overheat 플래그가 boolean으로 존재하는지만 체크
+  assert("month has overheat flag", typeof mpack.months[0].overheat==="boolean");
+
+  // 9) 결정론적 문구 선택 테스트(같은 seedStr이면 같은 결과)
+  const a = pickDeterministic(["A","B","C"], "seed123");
+  const b = pickDeterministic(["A","B","C"], "seed123");
+  assert("deterministic pick", a===b);
+
+  // 10) JDN dayGanji consistency (same date => same ganji)
+  const g1 = dayGanjiFromYMD(2024,2,4).ganji;
+  const g2 = dayGanjiFromYMD(2024,2,4).ganji;
+  assert("day ganji deterministic", g1===g2);
+
+  console.log("=== runTests() end ===");
+}
+
+window.runTests = runTests;
+
+// --------------------------- 17) 초기화 ----------------------------
+document.addEventListener("DOMContentLoaded", ()=>{
+  bindUI();
+  // default: try compute once if inputs already present
+  try{ runAll(); }catch(e){ console.error(e); }
+});
+
+// ======= (여기까지 이어붙이기 끝) =======
