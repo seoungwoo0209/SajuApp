@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>사주 카페 (v1.4)</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="overlay"></div>
+
+  <main class="app">
+    <header class="top">
+      <div class="brand">
+        <div class="logo">☯</div>
+        <div>
+          <div class="title">사주 카페</div>
+          <div class="subtitle">정적 웹앱 · 3파일 구조 · v1.4 대운중심</div>
+        </div>
+      </div>
+      <div id="globalBadges" class="badges"></div>
+    </header>
+
+    <section class="panel">
+      <div class="form">
+        <label>
+          <span>이름(옵션)</span>
+          <input id="name" type="text" placeholder="추승우" />
+        </label>
+
+        <label>
+          <span>생년월일(양력)</span>
+          <input id="birthDate" type="date" required />
+        </label>
+
+        <label>
+          <span>출생시각(필수)</span>
+          <input id="birthTime" type="time" required />
+        </label>
+
+        <label>
+          <span>성별</span>
+          <select id="gender">
+            <option value="M" selected>남</option>
+            <option value="F">여</option>
+          </select>
+        </label>
+
+        <div id="alert" class="alert hidden"></div>
+      </div>
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="tab-saju">사주</button>
+        <button class="tab" data-tab="tab-hidden">지장간</button>
+        <button class="tab" data-tab="tab-shishen">십신</button>
+        <button class="tab" data-tab="tab-daeun">대운</button>
+      </nav>
+
+      <section id="tab-saju" class="tabpane active">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">4주(연/월/일/시)</div>
+            <div class="pillars">
+              <div class="pillar">
+                <div class="p-label">년주</div>
+                <div class="p-ganji" id="p-year">-</div>
+              </div>
+              <div class="pillar">
+                <div class="p-label">월주</div>
+                <div class="p-ganji" id="p-month">-</div>
+              </div>
+              <div class="pillar">
+                <div class="p-label">일주</div>
+                <div class="p-ganji" id="p-day">-</div>
+              </div>
+              <div class="pillar">
+                <div class="p-label">시주</div>
+                <div class="p-ganji" id="p-hour">-</div>
+              </div>
+            </div>
+            <div class="tiny" id="dayMaster">일간: -</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">오행(표면 8글자)</div>
+            <div id="top2" class="top2">-</div>
+            <div class="bars" id="barsSurface"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-hidden" class="tabpane">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">지장간(각 지지별)</div>
+            <div id="hiddenList" class="hiddenlist">-</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">오행(지장간 포함)</div>
+            <div class="tiny">※ 지지 1개당 지장간 모두 +1 단순합(가중치 없음)</div>
+            <div class="bars" id="barsHidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-shishen" class="tabpane">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">천간 십신 (사주팔자)</div>
+            <div id="shishenPillars" class="shishen-pillars">-</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">지장간 십신</div>
+            <div id="shishenHidden" class="hiddenlist">-</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-daeun" class="tabpane">
+        <div class="card">
+          <div class="card-title">대운 정보</div>
+          <div id="daeunMeta" class="tiny muted">대운 시작: - / 방향: -</div>
+        </div>
+
+        <div id="daeunList" class="daeun-list">
+          <!-- 대운 카드들이 여기 렌더링 -->
+        </div>
+      </section>
+    </section>
+
+  </main>
+
+  <!-- 1단계: 계산 엔진 로드 (window.SajuResult 생성) -->
+  <script src="./saju_core.js?v=3"></script>
+  
+  <!-- 2단계: 총운 해석 로드 (window.SajuResult 읽어서 총운 표시) -->
+  <script src="./saju_fortune.js?v=3"></script>
+</body>
+</html>
