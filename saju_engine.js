@@ -145,8 +145,27 @@ function calculateVectors(pillars) {
  * 월령 득령 점수
  */
 function calculateSeasonScore(monthBranch, dayElement) {
+  // 방어코드: SEASON_MAP 존재 확인
+  if (!window.SajuData || !window.SajuData.SEASON_MAP) {
+    console.warn("⚠️ SEASON_MAP이 정의되지 않음");
+    return 0;
+  }
+  
   const season = window.SajuData.SEASON_MAP[monthBranch];
+  
+  // 방어코드: 월지 키 확인
+  if (!season) {
+    console.warn(`⚠️ 월지 "${monthBranch}"에 해당하는 계절이 없음`);
+    return 0;
+  }
+  
   const seasonElement = window.SajuData.SEASON_ELEMENT[season];
+  
+  // 방어코드: 계절 오행 확인
+  if (!seasonElement) {
+    console.warn(`⚠️ 계절 "${season}"에 해당하는 오행이 없음`);
+    return 0;
+  }
   
   if (seasonElement === dayElement) return 18;
   if (window.SajuData.WUXING_GENERATES[seasonElement] === dayElement) return 10;
@@ -161,6 +180,12 @@ function calculateSeasonScore(monthBranch, dayElement) {
  * 통근 점수 (지장간)
  */
 function calculateRootScore(pillars, dayElement) {
+  // 방어코드
+  if (!window.SajuData || !window.SajuData.HIDDEN_STEMS_RATIO) {
+    console.warn("⚠️ HIDDEN_STEMS_RATIO가 정의되지 않음");
+    return 0;
+  }
+  
   const branches = [
     { branch: pillars.year.branch, weight: 0.8 },
     { branch: pillars.month.branch, weight: 1.6 },
@@ -172,10 +197,18 @@ function calculateRootScore(pillars, dayElement) {
   
   branches.forEach(({ branch, weight }) => {
     const hiddenStems = window.SajuData.HIDDEN_STEMS_RATIO[branch];
-    if (!hiddenStems) return;
+    if (!hiddenStems) {
+      console.warn(`⚠️ 지지 "${branch}"의 지장간 정보 없음`);
+      return;
+    }
     
     hiddenStems.forEach(({ stem, ratio }) => {
       const stemElement = window.SajuData.WUXING_STEM[stem];
+      
+      if (!stemElement) {
+        console.warn(`⚠️ 천간 "${stem}"의 오행 정보 없음`);
+        return;
+      }
       
       if (stemElement === dayElement) {
         totalScore += ratio * 14 * weight;

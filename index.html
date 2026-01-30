@@ -189,6 +189,21 @@
     window.SajuData.WUXING_GENERATES = WUXING_GENERATES;
     window.SajuData.WUXING_CONTROLS = WUXING_CONTROLS;
     
+    // SEASON_MAP (saju_core에 없음, 직접 정의)
+    window.SajuData.SEASON_MAP = {
+      "寅": "spring", "卯": "spring", "辰": "spring",
+      "巳": "summer", "午": "summer", "未": "summer",
+      "申": "autumn", "酉": "autumn", "戌": "autumn",
+      "亥": "winter", "子": "winter", "丑": "winter"
+    };
+    
+    window.SajuData.SEASON_ELEMENT = {
+      "spring": "wood",
+      "summer": "fire",
+      "autumn": "metal",
+      "winter": "water"
+    };
+    
     // HIDDEN_STEMS_BRANCH를 HIDDEN_STEMS_RATIO로 변환 (role → ratio)
     window.SajuData.HIDDEN_STEMS_RATIO = {};
     const roleToRatio = { "여기": 0.6, "중기": 0.25, "정기": 0.15 };
@@ -196,12 +211,14 @@
       const stems = HIDDEN_STEMS_BRANCH[branch];
       window.SajuData.HIDDEN_STEMS_RATIO[branch] = stems.map(item => ({
         stem: item.stem,
-        ratio: stems.length === 1 ? 1.0 : (roleToRatio[item.role] || 0.5)
+        ratio: stems.length === 1 ? 1.0 : (
+          stems.length === 2 && item.role === "여기" ? 0.7 :
+          stems.length === 2 && item.role === "정기" ? 0.3 :
+          roleToRatio[item.role] || 0.5
+        )
       }));
     });
     
-    window.SajuData.SEASON_MAP = SEASON_MAP;
-    window.SajuData.SEASON_ELEMENT = SEASON_ELEMENT;
     window.SajuData.TEN_GODS_KR = SHISHEN_KR;
     
     // 격별 선호 축
